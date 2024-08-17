@@ -1,12 +1,12 @@
 /**
  * Copyright (c) 2012-2023 Nikita Koksharov
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ import com.corundumstudio.socketio.listener.ExceptionListener;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelHandlerContext;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -49,175 +51,175 @@ import org.slf4j.LoggerFactory;
 
 public class HttpTransportTest {
 
-  private SocketIOServer server;
+    private SocketIOServer server;
 
-  private ObjectMapper mapper = new ObjectMapper();
+    private ObjectMapper mapper = new ObjectMapper();
 
-  private Pattern responseJsonMatcher = Pattern.compile("([0-9]+)(\\{.*\\})?");
+    private Pattern responseJsonMatcher = Pattern.compile("([0-9]+)(\\{.*\\})?");
 
-  private Pattern multiResponsePattern = Pattern.compile("((?<type>[0-9])(?<id>[0-9]*)(?<body>.+)\\x{1E})*(?<lasttype>[0-9])(?<lastid>[0-9]*)(?<lastbody>.+)");
+    private Pattern multiResponsePattern = Pattern.compile("((?<type>[0-9])(?<id>[0-9]*)(?<body>.+)\\x{1E})*(?<lasttype>[0-9])(?<lastid>[0-9]*)(?<lastbody>.+)");
 
-  private final String packetSeparator = new String(new byte[] { 0x1e });
+    private final String packetSeparator = new String(new byte[]{0x1e});
 
-  private Logger logger = LoggerFactory.getLogger(HttpTransportTest.class);
+    private Logger logger = LoggerFactory.getLogger(HttpTransportTest.class);
 
-  @Before
-  public void createTestServer() {
-    final int port = findFreePort();
-    final Configuration config = new Configuration();
-    config.setRandomSession(true);
-    config.setTransports(Transport.POLLING);
-    config.setPort(port);
-    config.setExceptionListener(new ExceptionListener() {
-      @Override
-      public void onEventException(Exception e, List<Object> args, SocketIOClient client) {
-        logger.error("eventException", e);
-      }
+    @Before
+    public void createTestServer() {
+        final int port = findFreePort();
+        final Configuration config = new Configuration();
+        config.setRandomSession(true);
+        config.setTransports(Transport.POLLING);
+        config.setPort(port);
+        config.setExceptionListener(new ExceptionListener() {
+            @Override
+            public void onEventException(Exception e, List<Object> args, SocketIOClient client) {
+                logger.error("eventException", e);
+            }
 
-      @Override
-      public void onDisconnectException(Exception e, SocketIOClient client) {
-        logger.error("disconnectException", e);
-      }
+            @Override
+            public void onDisconnectException(Exception e, SocketIOClient client) {
+                logger.error("disconnectException", e);
+            }
 
-      @Override
-      public void onConnectException(Exception e, SocketIOClient client) {
-        logger.error("connectException", e);
-      }
+            @Override
+            public void onConnectException(Exception e, SocketIOClient client) {
+                logger.error("connectException", e);
+            }
 
-      @Override
-      public void onPingException(Exception e, SocketIOClient client) {
-        logger.error("pingException", e);
-      }
+            @Override
+            public void onPingException(Exception e, SocketIOClient client) {
+                logger.error("pingException", e);
+            }
 
-      @Override
-      public void onPongException(Exception e, SocketIOClient client) {
-        logger.error("pongException", e);
-      }
+            @Override
+            public void onPongException(Exception e, SocketIOClient client) {
+                logger.error("pongException", e);
+            }
 
-      @Override
-      public boolean exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
-        return false;
-      }
+            @Override
+            public boolean exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
+                return false;
+            }
 
-      @Override
-      public void onAuthException(Throwable e, SocketIOClient client) {
-        logger.error("authException", e);
-      }
-    });
+            @Override
+            public void onAuthException(Throwable e, SocketIOClient client) {
+                logger.error("authException", e);
+            }
+        });
 
-    final SocketConfig socketConfig = new SocketConfig();
-    socketConfig.setReuseAddress(true);
-    config.setSocketConfig(socketConfig);
+        final SocketConfig socketConfig = new SocketConfig();
+        socketConfig.setReuseAddress(true);
+        config.setSocketConfig(socketConfig);
 
-    this.server = new SocketIOServer(config);
-    this.server.start();
-  }
-
-  @After
-  public void cleanupTestServer() {
-    this.server.stop();
-  }
-
-  private URI createTestServerUri(final String query) throws URISyntaxException {
-    return new URI("http", null , "localhost",  server.getConfiguration().getPort(), server.getConfiguration().getContext() + "/",
-        query, null);
-  }
-
-  private String makeSocketIoRequest(final String sessionId, final String bodyForPost)
-      throws URISyntaxException, IOException, InterruptedException {
-    final URI uri = createTestServerUri("EIO=4&transport=polling&t=Oqd9eWh" + (sessionId == null ? "" : "&sid=" + sessionId));
-
-    URLConnection con = uri.toURL().openConnection();
-    HttpURLConnection http = (HttpURLConnection)con;
-    if (bodyForPost != null) {
-      http.setRequestMethod("POST"); // PUT is another valid option
-      http.setDoOutput(true);
+        this.server = new SocketIOServer(config);
+        this.server.start();
     }
 
-    if (bodyForPost != null) {
-      byte[] out = bodyForPost.toString().getBytes(StandardCharsets.UTF_8);
-      http.setFixedLengthStreamingMode(out.length);
-      http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-      http.connect();
-      try (OutputStream os = http.getOutputStream()) {
-        os.write(out);
-      }
-    } else {
-      http.connect();
+    @After
+    public void cleanupTestServer() {
+        this.server.stop();
     }
 
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(http.getInputStream(), StandardCharsets.UTF_8))) {
-      return reader.lines().collect(Collectors.joining("\n"));
+    private URI createTestServerUri(final String query) throws URISyntaxException {
+        return new URI("http", null, "localhost", server.getConfiguration().getPort(), server.getConfiguration().getContext() + "/",
+                query, null);
     }
-  }
 
-  private void postMessage(final String sessionId, final String body)
-      throws URISyntaxException, IOException, InterruptedException {
-    final String responseStr = makeSocketIoRequest(sessionId, body);
-    Assert.assertEquals(responseStr, "ok");
-  }
+    private String makeSocketIoRequest(final String sessionId, final String bodyForPost)
+            throws URISyntaxException, IOException, InterruptedException {
+        final URI uri = createTestServerUri("EIO=4&transport=polling&t=Oqd9eWh" + (sessionId == null ? "" : "&sid=" + sessionId));
 
-  private String[] pollForListOfResponses(final String sessionId)
-      throws URISyntaxException, IOException, InterruptedException {
-    final String responseStr = makeSocketIoRequest(sessionId, null);
-    return responseStr.split(packetSeparator);
-  }
-
-  private String connectForSessionId(final String sessionId)
-      throws URISyntaxException, IOException, InterruptedException {
-    final String firstMessage = pollForListOfResponses(sessionId)[0];
-    final Matcher jsonMatcher = responseJsonMatcher.matcher(firstMessage);
-    Assert.assertTrue(jsonMatcher.find());
-    Assert.assertEquals(jsonMatcher.group(1), "0");
-    final JsonNode node = mapper.readTree(jsonMatcher.group(2));
-    return node.get("sid").asText();
-  }
-
-  @Test
-  public void testConnect() throws URISyntaxException, IOException, InterruptedException {
-    final String sessionId = connectForSessionId(null);
-    Assert.assertNotNull(sessionId);
-  }
-
-  @Test
-  public void testMultipleMessages() throws URISyntaxException, IOException, InterruptedException {
-    server.addEventListener("hello", String.class, (client, data, ackSender) ->
-        ackSender.sendAckData(data));
-    final String sessionId = connectForSessionId(null);
-    final ArrayList<String> events = new ArrayList<>();
-    events.add("420[\"hello\", \"world\"]");
-    events.add("421[\"hello\", \"socketio\"]");
-    events.add("422[\"hello\", \"socketio\"]");
-    postMessage(sessionId, events.stream().collect(Collectors.joining(packetSeparator)));
-    final String[] responses = pollForListOfResponses(sessionId);
-    Assert.assertEquals(responses.length, 3);
-  }
-
-  /**
-   * Returns a free port number on localhost.
-   *
-   * Heavily inspired from org.eclipse.jdt.launching.SocketUtil (to avoid a dependency to JDT just because of this).
-   * Slightly improved with close() missing in JDT. And throws exception instead of returning -1.
-   *
-   * @return a free port number on localhost
-   * @throws IllegalStateException if unable to find a free port
-   */
-  private static int findFreePort() {
-    ServerSocket socket = null;
-    try {
-      socket = new ServerSocket(0);
-      socket.setReuseAddress(true);
-      return socket.getLocalPort();
-    } catch (IOException ignored) {
-    } finally {
-      if (socket != null) {
-        try {
-          socket.close();
-        } catch (IOException ignored) {
+        URLConnection con = uri.toURL().openConnection();
+        HttpURLConnection http = (HttpURLConnection) con;
+        if (bodyForPost != null) {
+            http.setRequestMethod("POST"); // PUT is another valid option
+            http.setDoOutput(true);
         }
-      }
+
+        if (bodyForPost != null) {
+            byte[] out = bodyForPost.toString().getBytes(StandardCharsets.UTF_8);
+            http.setFixedLengthStreamingMode(out.length);
+            http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            http.connect();
+            try (OutputStream os = http.getOutputStream()) {
+                os.write(out);
+            }
+        } else {
+            http.connect();
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(http.getInputStream(), StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining("\n"));
+        }
     }
-    throw new IllegalStateException("Could not find a free TCP/IP port to start embedded SocketIO Server on");
-  }
+
+    private void postMessage(final String sessionId, final String body)
+            throws URISyntaxException, IOException, InterruptedException {
+        final String responseStr = makeSocketIoRequest(sessionId, body);
+        Assert.assertEquals(responseStr, "ok");
+    }
+
+    private String[] pollForListOfResponses(final String sessionId)
+            throws URISyntaxException, IOException, InterruptedException {
+        final String responseStr = makeSocketIoRequest(sessionId, null);
+        return responseStr.split(packetSeparator);
+    }
+
+    private String connectForSessionId(final String sessionId)
+            throws URISyntaxException, IOException, InterruptedException {
+        final String firstMessage = pollForListOfResponses(sessionId)[0];
+        final Matcher jsonMatcher = responseJsonMatcher.matcher(firstMessage);
+        Assert.assertTrue(jsonMatcher.find());
+        Assert.assertEquals(jsonMatcher.group(1), "0");
+        final JsonNode node = mapper.readTree(jsonMatcher.group(2));
+        return node.get("sid").asText();
+    }
+
+    @Test
+    public void testConnect() throws URISyntaxException, IOException, InterruptedException {
+        final String sessionId = connectForSessionId(null);
+        Assert.assertNotNull(sessionId);
+    }
+
+    @Test
+    public void testMultipleMessages() throws URISyntaxException, IOException, InterruptedException {
+        server.addEventListener("hello", String.class, (client, data, ackSender) ->
+                ackSender.sendAckData(data));
+        final String sessionId = connectForSessionId(null);
+        final ArrayList<String> events = new ArrayList<>();
+        events.add("420[\"hello\", \"world\"]");
+        events.add("421[\"hello\", \"socketio\"]");
+        events.add("422[\"hello\", \"socketio\"]");
+        postMessage(sessionId, events.stream().collect(Collectors.joining(packetSeparator)));
+        final String[] responses = pollForListOfResponses(sessionId);
+        Assert.assertEquals(responses.length, 3);
+    }
+
+    /**
+     * Returns a free port number on localhost.
+     *
+     * Heavily inspired from org.eclipse.jdt.launching.SocketUtil (to avoid a dependency to JDT just because of this).
+     * Slightly improved with close() missing in JDT. And throws exception instead of returning -1.
+     *
+     * @return a free port number on localhost
+     * @throws IllegalStateException if unable to find a free port
+     */
+    private static int findFreePort() {
+        ServerSocket socket = null;
+        try {
+            socket = new ServerSocket(0);
+            socket.setReuseAddress(true);
+            return socket.getLocalPort();
+        } catch (IOException ignored) {
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+        throw new IllegalStateException("Could not find a free TCP/IP port to start embedded SocketIO Server on");
+    }
 
 }

@@ -1,12 +1,12 @@
 /**
  * Copyright (c) 2012-2023 Nikita Koksharov
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,6 +48,7 @@ public class Packet implements Serializable {
         super();
         this.type = type;
     }
+
     public Packet(PacketType type, EngineIOVersion engineIOVersion) {
         this(type);
         this.engineIOVersion = engineIOVersion;
@@ -71,16 +72,16 @@ public class Packet implements Serializable {
 
     /**
      * Get packet data
-     * 
+     *
      * @param <T> the type data
-     * 
+     *
      * <pre>
      * @return <b>json object</b> for PacketType.JSON type
      * <b>message</b> for PacketType.MESSAGE type
      * </pre>
      */
     public <T> T getData() {
-        return (T)data;
+        return (T) data;
     }
 
     /**
@@ -111,8 +112,8 @@ public class Packet implements Serializable {
 
     public void setNsp(String endpoint) {
         //patch for #903
-        if (endpoint.equals("{}")){
-            endpoint="";
+        if (endpoint.equals("{}")) {
+            endpoint = "";
         }
         this.nsp = endpoint;
     }
@@ -145,17 +146,21 @@ public class Packet implements Serializable {
         this.attachmentsCount = attachmentsCount;
         this.attachments = new ArrayList<>();
     }
+
     public void addAttachment(ByteBuf attachment) {
         if (this.attachments.size() < attachmentsCount) {
             this.attachments.add(attachment);
         }
     }
+
     public List<ByteBuf> getAttachments() {
         return attachments;
     }
+
     public boolean hasAttachments() {
         return attachmentsCount != 0;
     }
+
     public boolean isAttachmentsLoaded() {
         return this.attachments.size() == attachmentsCount;
     }
@@ -163,6 +168,7 @@ public class Packet implements Serializable {
     public ByteBuf getDataSource() {
         return dataSource;
     }
+
     public void setDataSource(ByteBuf dataSource) {
         this.dataSource = dataSource;
     }
